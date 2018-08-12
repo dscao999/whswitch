@@ -32,6 +32,7 @@ static inline void uart_write_dmawait(int port)
 	while (uart_write_dma(port))
 		tm4c_waitint();
 }
+void uart_write_wait(int port);
 
 static inline int uart_indma(int port)
 {

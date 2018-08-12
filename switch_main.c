@@ -45,12 +45,18 @@ void __attribute__((noreturn)) main(void)
 	tm4c_dma_enable();
 	tm4c_delay(1000);
 	tm4c_ledlit(GREEN, 1);
-	tm4c_delay(3000);
+	tm4c_delay(2000);
 	tm4c_ledlit(GREEN, 0);
 
 	uart_open(0);
+	uart_open(1);
 	uart_write(0, hello, strlen(hello));
+	uart_write(1, hello, strlen(hello));
+	tm4c_ledlit(RED, 1);
+	tm4c_delay(500);
+	tm4c_ledlit(RED, 0);
 	uart_read_start(0, mesg, sizeof(mesg));
+	uart_close(1);
 
 	while(1) {
 		clen = uart_read_bytes(0);
@@ -59,11 +65,12 @@ void __attribute__((noreturn)) main(void)
 		uart_write(0, mesg+plen, clen-plen);
 		plen = clen;
 		
-		if (clen > 5 && memcmp(mesg, RESET, 5) == 0)
-			tm4c_reset();
 		if (memchr(mesg, clen, '\r') < clen) {
 			uart_read_stop(0);
 			uart_write(0, "\n", 1);
+			uart_write_wait(0);
+			if (clen > 5 && memcmp(mesg, RESET, 5) == 0)
+				tm4c_reset();
 			uart_read_start(0, mesg, sizeof(mesg));
 			plen = 0;
 		}

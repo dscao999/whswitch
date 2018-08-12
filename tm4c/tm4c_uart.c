@@ -112,6 +112,14 @@ void uart_open(int port)
 	ROM_IntEnable(intr);
 }
 
+void uart_write_wait(int port)
+{
+	struct uart_port *uart = uartms + port;
+
+	while (HWREG(uart->base+UART_O_FR) & UART_FR_BUSY)
+		;
+}
+
 static int uart_direct_write(struct uart_port *uart, const char *str, int len)
 {
 	const unsigned char *ustr;
@@ -206,7 +214,7 @@ void uart_close(int port)
 	struct uart_port *uart = uartms + port;
 	uint32_t intr, periph;
 
-        while (uart->txdma)
+        while (uart->txdma || uart->rxdma)
                 ;
 	switch(port) {
 	case 0:
