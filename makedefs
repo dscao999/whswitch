@@ -152,6 +152,7 @@ ifdef DEBUG
 CFLAGS+=-g -DDEBUG -O0 -ffreestanding
 else
 CFLAGS+=-O2 -DNDEBUG -ffreestanding
+LDFLAGS += -O2
 endif
 
 

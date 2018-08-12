@@ -11,10 +11,11 @@
 #include "inc/hw_nvic.h"
 #include "inc/hw_types.h"
 #include "inc/hw_udma.h"
-#include "tm4c_miscs.h"
+#include "tm4c_setup.h"
 #include "tm4c_uart.h"
 #include "tm4c_gpio.h"
 #include "tm4c_ssi.h"
+#include "tm4c_dma.h"
 
 //*****************************************************************************
 //
@@ -26,7 +27,6 @@ static void NmiSR(void);
 static void FaultISR(void);
 static void IntDefaultHandler(void);
 static void SysTickISR(void);
-static void udma_error(void);
 
 //*****************************************************************************
 //
@@ -41,7 +41,6 @@ extern __attribute__((noreturn)) void main(void);
 //
 //*****************************************************************************
 static uint32_t pui32Stack[512];
-extern uint32_t udmaerr;
 
 //*****************************************************************************
 //
@@ -116,7 +115,7 @@ void (* const g_pfnVectors[])(void) =
 	IntDefaultHandler,			// USB0
 	IntDefaultHandler,			// PWM Generator 3
 	IntDefaultHandler,			// uDMA Software Transfer
-	udma_error,				// uDMA Error
+	udma_error_isr,				// uDMA Error
 	IntDefaultHandler,			// ADC1 Sequence 0
 	IntDefaultHandler,			// ADC1 Sequence 1
 	IntDefaultHandler,			// ADC1 Sequence 2
@@ -326,16 +325,4 @@ IntDefaultHandler(void)
 static void SysTickISR(void)
 {
 	sys_ticks++;
-}
-
-static void udma_error(void)
-{
-	uint32_t err;
-
-	err = HWREG(UDMA_ERRCLR);
-	if (err & 1) {
-		HWREG(UDMA_ERRCLR) = 1;
-		udmaerr++;
-		err = HWREG(UDMA_ERRCLR);
-	}
 }

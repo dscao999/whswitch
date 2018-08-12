@@ -6,7 +6,8 @@
 #include "driverlib/gpio.h"
 #include "driverlib/udma.h"
 #include "driverlib/uart.h"
-#include "tm4c_miscs.h"
+#include "miscutils.h"
+#include "tm4c_setup.h"
 #include "tm4c_dma.h"
 #include "tm4c_uart.h"
 
@@ -16,7 +17,7 @@ static volatile uint32_t uart1_isr_nums = 0;
 static struct uart_port uartms[] = {
 	{
 		.base = UART0_BASE,
-		.tx_dmach = UDMA_CHANNEL_UART0TX
+		.tx_dmach = UDMA_CHANNEL_UART0TX,
 		.rx_dmach = UDMA_CHANNEL_UART0RX
 	},
 	{
@@ -156,8 +157,7 @@ int uart_read_start(int port, char *buf, int len)
 	struct uart_port *uart = uartms + port;
 
 	uart->buf = buf;
-	uart->buf_len = len;
-	uart->buf_pos = 0;
+	uart->len = 0;
         uart->explen = len > MAX_DMALEN? MAX_DMALEN : len;
         ROM_uDMAChannelTransferSet(uart->rx_dmach|UDMA_PRI_SELECT,
                 UDMA_MODE_BASIC, (void *)(uart->base+UART_O_DR),
@@ -176,14 +176,15 @@ int uart_read_stop(int port)
 	if (uart->buf == NULL)
 		return 1;
 
-	if (ROM_uDMAChannelModeGet(uart->rx_dmach|UDAM_PRI_SELECT)
+	if (ROM_uDMAChannelModeGet(uart->rx_dmach|UDMA_PRI_SELECT)
 			!= UDMA_MODE_STOP) {
-		lenrem = ROM_uDMAChannelSizeGet(uart->rx_dmach|UDAM_PRI_SELECT);
-		uart->len = (uart->r_dmalen - relrem - 1);
+		lenrem = ROM_uDMAChannelSizeGet(uart->rx_dmach|UDMA_PRI_SELECT);
+		uart->len = (uart->explen - lenrem - 1);
 		HWREG(uart->base+UART_O_DMACTL) &= ~UART_DMA_RX;
 		HWREG(UDMA_ENACLR) = 1 << uart->rx_dmach;
 	}
 	uart->buf = NULL;
+	return uart->len;
 }
 
 int uart_read_bytes(int port)
@@ -193,10 +194,10 @@ int uart_read_bytes(int port)
 
 	if (uart->buf == NULL)
 		return 0;
-	if (ROM_uDMAChannelModeGet(uart->rx_dmach|UDAM_PRI_SELECT)
+	if (ROM_uDMAChannelModeGet(uart->rx_dmach|UDMA_PRI_SELECT)
 			!= UDMA_MODE_STOP) {
-		lenrem = ROM_uDMAChannelSizeGet(uart->rx_dmach|UDAM_PRI_SELECT);
-		uart->len = (uart->explen - relrem - 1);
+		lenrem = ROM_uDMAChannelSizeGet(uart->rx_dmach|UDMA_PRI_SELECT);
+		uart->len = (uart->explen - lenrem - 1);
 	}
 	return uart->len;
 }
@@ -254,18 +255,11 @@ void uart_close(int port)
 
 static void uart_recv(struct uart_port *uart)
 {
-	char *buf;
-
-	if (uart->recv_buf != NULL) {
-		buf = uart->recv_buf + uart->len;
-		while ((uart->len < uart->explen) &&
-			(HWREG(uart->base+UART_O_FR) & UART_FR_RXFE) == 0) {
-			*buf++ = HWREG(uart->base+UART_O_DR);
-			uart->len++;
-		}
-	}
-	while ((HWREG(uart->base+UART_O_FR) & UART_FR_RXFE) == 0)
+	while ((HWREG(uart->base+UART_O_FR) & UART_FR_RXFE) == 0) {
 		HWREG(uart->base+UART_O_DR);
+		if (uart->rxdma)
+			uart->dma_ov++;
+	}
 }
 
 static void uart_isr(struct uart_port *uart)
@@ -299,7 +293,7 @@ static void uart_isr(struct uart_port *uart)
 	}
 	if (err)
 		HWREG(uart->base+UART_O_ECR) = 0x0f;
-	if ((mis & (UART_INT_RX|UART_INT_RT))
+	if (mis & (UART_INT_RX|UART_INT_RT))
 		uart_recv(uart);
 }
 

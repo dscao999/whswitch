@@ -12,6 +12,9 @@
 #include "driverlib/gpio.h"
 #include "driverlib/rom.h"
 
+#define HZ 80000000
+#define CYCLES 100
+
 extern volatile uint32_t sys_ticks;
 extern const uint32_t MEMADDR;
 

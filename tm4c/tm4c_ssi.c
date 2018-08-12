@@ -9,7 +9,7 @@
 #include "driverlib/ssi.h"
 #include "driverlib/udma.h"
 #include "miscutils.h"
-#include "tm4c_miscs.h"
+#include "tm4c_setup.h"
 #include "tm4c_dma.h"
 #include "tm4c_ssi.h"
 

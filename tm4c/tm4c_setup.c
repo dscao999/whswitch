@@ -1,8 +1,4 @@
-#include "tm4c_miscs.h"
-#include "tm4c_gpio.h"
-
-#define HZ 80000000
-#define CYCLES 100
+#include "tm4c_setup.h"
 
 const uint32_t MEMADDR = 0x20000000;
 volatile uint32_t sys_ticks;

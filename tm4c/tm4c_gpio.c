@@ -6,7 +6,7 @@
 #include "inc/hw_gpio.h"
 #include "driverlib/gpio.h"
 #include "driverlib/rom.h"
-#include "tm4c_miscs.h"
+#include "tm4c_setup.h"
 #include "tm4c_gpio.h"
 
 uint32_t gpioc_isr_nums = 0;
@@ -29,13 +29,16 @@ static struct gpio_port gpioms[] = {
 	},
 	{
 		.base = GPIO_PORTF_BASE,
+	},
+	{
+		.base = GPIO_PORTG_BASE,
 	}
 };
 
-void tm4c_gpio_setup(enum GPIOPORT port, uint8_t inps, uint8_t outps, uint8_t intrps)
+void tm4c_gpio_setup(enum GPIOPORT port, uint8_t inpin, uint8_t outpin, uint8_t intrpin)
 {
 	struct gpio_port *gpio = gpioms+port;
-	uint32_t intr;
+	uint32_t intr, pinintr;
 	uint32_t sysperip;
 
 	switch(port) {
@@ -63,6 +66,10 @@ void tm4c_gpio_setup(enum GPIOPORT port, uint8_t inps, uint8_t outps, uint8_t in
 		intr = INT_GPIOF;
 		sysperip = SYSCTL_PERIPH_GPIOF;
 		break;
+	case GPIOG:
+		intr = INT_GPIOG;
+		sysperip = SYSCTL_PERIPH_GPIOG;
+		break;
 	default:
 		while (1)
 			;
@@ -70,20 +77,16 @@ void tm4c_gpio_setup(enum GPIOPORT port, uint8_t inps, uint8_t outps, uint8_t in
 	ROM_SysCtlPeripheralEnable(sysperip);
 	while(!ROM_SysCtlPeripheralReady(sysperip))
                         ;
-	if (inps) {
-		ROM_GPIODirModeSet(gpio->base, inps, GPIO_DIR_MODE_IN);
-		HWREG(gpio->base+GPIO_O_DEN) |= inps;
-	}
-	if (outps) {
-		ROM_GPIOPadConfigSet(gpio->base, outps, GPIO_STRENGTH_4MA, GPIO_PIN_TYPE_OD);
-		ROM_GPIODirModeSet(gpio->base, outps, GPIO_DIR_MODE_OUT);
-	}
-
-	if (intrps) {
+	if (inpin)
+		ROM_GPIOPinTypeGPIOInput(gpio->base, inpin);
+	if (outpin)
+		ROM_GPIOPinTypeGPIOOutput(gpio->base, outpin);
+	if (intrpin & inpin) {
+		pinintr = (intrpin & inpin);
 		HWREG(gpio->base+GPIO_O_IM) = 0;
-		ROM_GPIOIntTypeSet(gpio->base, intrps, GPIO_BOTH_EDGES);
+		ROM_GPIOIntTypeSet(gpio->base, pinintr, GPIO_BOTH_EDGES);
 		HWREG(gpio->base+GPIO_O_ICR) = 0x0ff;
-		HWREG(gpio->base+GPIO_O_IM) = intrps;
+		HWREG(gpio->base+GPIO_O_IM) = pinintr;
 		ROM_IntPrioritySet(intr, 0x60);
 		ROM_IntEnable(intr);
 	}
@@ -173,6 +176,6 @@ void tm4c_ledlit(enum ledcolor led, int onoff)
 		break;
 	}
 
-	v = onoff? 0xff : 0x0;
+	v = onoff? ledpin : 0;
 	ROM_GPIOPinWrite(GPIO_PORTF_BASE, ledpin, v);
 }

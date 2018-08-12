@@ -2,6 +2,7 @@
 #define MISCUTILS_DSCAO__
 #include <stdint.h>
 
+#define NULL ((void *)0)
 #define likely(x)  __builtin_expect((x), 1)
 #define unlikely(x) __builtin_expect((x), 0)
 
@@ -77,7 +78,7 @@ static inline void memset(void *dst, int v, int len)
 		*pdst = v;
 }
 
-static inline int memchar(const char *str, int len, uint8_t token)
+static inline int memchr(const char *str, int len, uint8_t token)
 {
 	const char *pstr = str;
 	int tpos;

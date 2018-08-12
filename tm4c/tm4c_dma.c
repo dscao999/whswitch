@@ -17,3 +17,14 @@ int tm4c_dma_rem(int ch)
 {
 	return (dmacr[ch].ctrl & UDMA_CHCTL_XFERSIZE_M) >> UDMA_CHCTL_XFERSIZE_S;
 }
+
+void udma_error_isr(void)
+{
+	uint32_t err;
+	err = HWREG(UDMA_ERRCLR);
+	if (err & 1) {
+		HWREG(UDMA_ERRCLR) = 1;
+		udmaerr++;
+		err = HWREG(UDMA_ERRCLR);
+	}
+}

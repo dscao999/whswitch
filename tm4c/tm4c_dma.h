@@ -18,5 +18,7 @@ struct dmactl {
 
 void tm4c_dma_enable(void);
 int tm4c_dma_rem(int ch);
+
+void udma_error_isr(void);
 	
 #endif /* TM4C_DMA_DSCAO__ */

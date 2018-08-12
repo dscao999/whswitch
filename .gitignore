@@ -56,3 +56,6 @@ dkms.conf
 syslib
 # vim swap file
 .*.swp
+cscope.files
+nswitch
+nswitch.bin

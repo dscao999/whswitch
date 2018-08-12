@@ -6,7 +6,7 @@
 #include "inc/hw_ints.h"
 #include "inc/hw_gpio.h"
 #include "driverlib/qei.h"
-#include "tm4c_miscs.h"
+#include "tm4c_setup.h"
 #include "tm4c_qei.h"
 
 static uint32_t qei0_isr_nums = 0;

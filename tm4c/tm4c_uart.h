@@ -5,8 +5,9 @@
 struct uart_port {
 	uint32_t base;
 	char *buf;
-	uint16_t oerr;
-	uint16_t ferr;
+	uint8_t oerr;
+	uint8_t ferr;
+	uint8_t dma_ov;
 	uint8_t tx_dmach;
 	uint8_t rx_dmach;
 	volatile uint8_t txdma:1, rxdma:1;
@@ -26,6 +27,12 @@ int uart_read_stop(int port);
 
 int uart_read_dma(int port);
 int uart_write_dma(int port);
+static inline void uart_write_dmawait(int port)
+{
+	while (uart_write_dma(port))
+		tm4c_waitint();
+}
+
 static inline int uart_indma(int port)
 {
 	return uart_read_dma(port) || uart_write_dma(port);

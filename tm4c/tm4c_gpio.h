@@ -7,7 +7,10 @@
 #include <driverlib/gpio.h>
 #include <driverlib/rom.h>
 
-enum GPIOPORT { GPIOA = 0, GPIOB = 1, GPIOC = 2, GPIOD = 3, GPIOE = 4, GPIOF = 5};
+enum GPIOPORT {
+	GPIOA = 0, GPIOB = 1, GPIOC = 2, GPIOD = 3,
+	GPIOE = 4, GPIOF = 5, GPIOG = 6
+};
 struct gpio_port {
 	uint32_t base;
 	uint32_t isr_nums;
