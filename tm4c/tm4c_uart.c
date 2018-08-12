@@ -153,7 +153,6 @@ int uart_write(int port, const char *str, int len)
 
 int uart_read_start(int port, char *buf, int len)
 {
-	int dmalen;
 	struct uart_port *uart = uartms + port;
 
 	uart->buf = buf;
@@ -161,7 +160,7 @@ int uart_read_start(int port, char *buf, int len)
         uart->explen = len > MAX_DMALEN? MAX_DMALEN : len;
         ROM_uDMAChannelTransferSet(uart->rx_dmach|UDMA_PRI_SELECT,
                 UDMA_MODE_BASIC, (void *)(uart->base+UART_O_DR),
-		(void *)uart->buf, dmalen);
+		(void *)uart->buf, uart->explen);
         uart->rxdma = 1;
 	HWREG(UDMA_ENASET) = 1 << uart->rx_dmach;
 	HWREG(uart->base+UART_O_DMACTL) |= UART_DMA_RX;
@@ -179,7 +178,7 @@ int uart_read_stop(int port)
 	if (ROM_uDMAChannelModeGet(uart->rx_dmach|UDMA_PRI_SELECT)
 			!= UDMA_MODE_STOP) {
 		lenrem = ROM_uDMAChannelSizeGet(uart->rx_dmach|UDMA_PRI_SELECT);
-		uart->len = (uart->explen - lenrem - 1);
+		uart->len = uart->explen - lenrem;
 		HWREG(uart->base+UART_O_DMACTL) &= ~UART_DMA_RX;
 		HWREG(UDMA_ENACLR) = 1 << uart->rx_dmach;
 	}
@@ -197,7 +196,7 @@ int uart_read_bytes(int port)
 	if (ROM_uDMAChannelModeGet(uart->rx_dmach|UDMA_PRI_SELECT)
 			!= UDMA_MODE_STOP) {
 		lenrem = ROM_uDMAChannelSizeGet(uart->rx_dmach|UDMA_PRI_SELECT);
-		uart->len = (uart->explen - lenrem - 1);
+		uart->len = uart->explen - lenrem;
 	}
 	return uart->len;
 }

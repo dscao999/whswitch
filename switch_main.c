@@ -30,12 +30,12 @@ __error__(char *pcFilename, uint32_t ui32Line)
 //
 //*****************************************************************************
 static const char *RESET = "ReseT";
-static const char hello[] = "Initialization Completed!\n\r";
+static const char hello[] = "Initialization Completed!\r\n";
 
 void __attribute__((noreturn)) main(void)
 {
-	uint16_t plen = 0, clen, len;
-	char mesg[80], buf[80];
+	uint16_t plen = 0, clen;
+	char mesg[80];
 
 	tm4c_gpio_setup(GPIOA, 0, 0, 0);
 	tm4c_gpio_setup(GPIOB, 0, 0, 0);
@@ -50,28 +50,22 @@ void __attribute__((noreturn)) main(void)
 
 	uart_open(0);
 	uart_write(0, hello, strlen(hello));
-	uart_open(1);
-	uart_write(1, hello, strlen(hello));
-	uart_read_start(1, mesg, sizeof(mesg));
+	uart_read_start(0, mesg, sizeof(mesg));
 
 	while(1) {
-		clen = uart_read_bytes(1);
+		clen = uart_read_bytes(0);
 		if ((clen - plen) == 0)
 			continue;
+		uart_write(0, mesg+plen, clen-plen);
 		plen = clen;
-		uart_write_dmawait(0);
-		len = num2str_dec(clen, buf, sizeof(80));
-		buf[len] = 0x0d;
-		buf[len+1] = 0x0a;
-		uart_write(0, buf, len+2);
 		
-		if (len > 5 && memcmp(mesg, RESET, 5) == 0)
+		if (clen > 5 && memcmp(mesg, RESET, 5) == 0)
 			tm4c_reset();
-/*		if (memchr(mesg, len, '\r') < len) {
-			uart_write(0, echo, strlen(echo));
-			uart_write(0, mesg, len);
-			uart_read_stop(1);
-			uart_read_start(1, mesg, sizeof(mesg));
-		}*/
+		if (memchr(mesg, clen, '\r') < clen) {
+			uart_read_stop(0);
+			uart_write(0, "\n", 1);
+			uart_read_start(0, mesg, sizeof(mesg));
+			plen = 0;
+		}
 	}
 }
