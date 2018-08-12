@@ -2,33 +2,34 @@
 #define TM4C_UART_DSCAO__
 #include <stdint.h>
 
-#define UART_BUFSIZ	128
 struct uart_port {
 	uint32_t base;
-	uint32_t at_tick;
+	char *buf;
 	uint16_t oerr;
 	uint16_t ferr;
-	uint16_t dmalen;
 	uint8_t tx_dmach;
 	uint8_t rx_dmach;
-	volatile uint8_t txdma, rxdma;
-	volatile uint8_t rxhead;
-	uint8_t rxtail;
-	uint8_t rxbuf[UART_BUFSIZ];
+	volatile uint8_t txdma:1, rxdma:1;
+	volatile uint8_t len;
+	uint8_t explen;
 };
 
 void uart_open(int port);
 void uart_close(int port);
 
-int uart_write(int port, const char *str, int len, int wait);
+int uart_write(int port, const char *str, int len);
 int uart_write_sync(int port, const char *str, int len);
-void uart_write_cmd_expect(int port, const char cmd, int explen);
 
-int uart_read(int port, char *buf, int len, int wait);
-int uart_read_expect(int port, char *buf, int len);
-int uart_in_dma(int port);
-void uart_wait_dma(int port);
-void uart_wait(int port);
+int uart_read_start(int port, char *buf, int len);
+int uart_read_bytes(int port);
+int uart_read_stop(int port);
+
+int uart_read_dma(int port);
+int uart_write_dma(int port);
+static inline int uart_indma(int port)
+{
+	return uart_read_dma(port) || uart_write_dma(port);
+}
 
 void uart0_isr(void);
 void uart1_isr(void);

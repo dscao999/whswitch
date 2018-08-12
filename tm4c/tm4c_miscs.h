@@ -12,12 +12,8 @@
 #include "driverlib/gpio.h"
 #include "driverlib/rom.h"
 
-enum led_type {RED, BLUE, GREEN};
 extern volatile uint32_t sys_ticks;
-extern const uint32_t HZ;
-extern const uint32_t CYCLES;
 extern const uint32_t MEMADDR;
-extern uint32_t cycles;
 
 #define time_before(tmark) \
 	((int32_t)sys_ticks - (int32_t)tmark < 0)
@@ -31,9 +27,9 @@ extern uint32_t cycles;
 #define time_arrived(tmark) \
 	((int32_t)sys_ticks - (int32_t)tmark >= 0)
 
-static inline int csec2tick(int csecs)
+static inline int msec2tick(int msec)
 {
-	return cycles*csecs;
+	return (msec+5)/10;
 }
 
 static inline void tm4c_memsync(void)
@@ -41,18 +37,17 @@ static inline void tm4c_memsync(void)
 	__asm__ __volatile__("dsb");
 }
 
-static uint32_t tm4c_tick_after(int csecs)
+static uint32_t tm4c_tick_after(int msec)
 {
-	return sys_ticks + csec2tick(csecs);
+	return sys_ticks + msec2tick(msec);
 }
 
 void tm4c_setup(void);
-void tm4c_ledlit(enum led_type led, int onoff);
-static inline void tm4c_delay(int csecs)
+static inline void tm4c_delay(int msec)
 {
 	uint32_t mark;
 
-	mark = tm4c_tick_after(csecs);
+	mark = tm4c_tick_after(msec);
 	while (time_before(mark))
 		__asm__ __volatile__("wfi");
 }

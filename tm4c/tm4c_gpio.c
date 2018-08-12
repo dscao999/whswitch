@@ -153,3 +153,26 @@ int  tm4c_gpio_isrnum(enum GPIOPORT port, uint8_t pin)
 	else
 		return 0;
 }
+
+void tm4c_ledlit(enum ledcolor led, int onoff)
+{
+	uint8_t ledpin, v;
+
+	switch(led) {
+	case RED:
+		ledpin = GPIO_PIN_1;
+		break;
+	case BLUE:
+		ledpin = GPIO_PIN_2;
+		break;
+	case GREEN:
+		ledpin = GPIO_PIN_3;
+		break;
+	default:
+		ledpin = GPIO_PIN_1;
+		break;
+	}
+
+	v = onoff? 0xff : 0x0;
+	ROM_GPIOPinWrite(GPIO_PORTF_BASE, ledpin, v);
+}
