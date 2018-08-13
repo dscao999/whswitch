@@ -14,7 +14,7 @@ struct dmactl {
 	uint32_t reserv1;
 };
 
-#define MAX_DMALEN	256
+#define MAX_DMALEN	512
 
 void tm4c_dma_enable(void);
 int tm4c_dma_rem(int ch);

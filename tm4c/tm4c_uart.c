@@ -112,7 +112,7 @@ void uart_open(int port)
 	ROM_IntEnable(intr);
 }
 
-void uart_write_wait(int port)
+void uart_trans_wait(int port)
 {
 	struct uart_port *uart = uartms + port;
 
@@ -159,53 +159,52 @@ int uart_write(int port, const char *str, int len)
 	return explen;
 }
 
-int uart_read_start(int port, char *buf, int len)
+int uart_read_start(int port, char *buf, int len, int dma)
 {
 	struct uart_port *uart = uartms + port;
 
-	uart->buf = buf;
+	if (len <= 0)
+		return -1;
 	uart->len = 0;
-        uart->explen = len > MAX_DMALEN? MAX_DMALEN : len;
-        ROM_uDMAChannelTransferSet(uart->rx_dmach|UDMA_PRI_SELECT,
-                UDMA_MODE_BASIC, (void *)(uart->base+UART_O_DR),
-		(void *)uart->buf, uart->explen);
-        uart->rxdma = 1;
-	HWREG(UDMA_ENASET) = 1 << uart->rx_dmach;
-	HWREG(uart->base+UART_O_DMACTL) |= UART_DMA_RX;
+        uart->buflen = len;
+	uart->buf = buf;
+	if (dma) {
+		uart->buflen = len > MAX_DMALEN? MAX_DMALEN : len;
+		ROM_uDMAChannelTransferSet(uart->rx_dmach|UDMA_PRI_SELECT,
+			UDMA_MODE_BASIC, (void *)(uart->base+UART_O_DR),
+			(void *)buf, uart->buflen);
+		uart->rxdma = 1;
+		HWREG(UDMA_ENASET) = 1 << uart->rx_dmach;
+		HWREG(uart->base+UART_O_DMACTL) |= UART_DMA_RX;
+	}
 	return 0;
 }
 
 int uart_read_stop(int port)
 {
 	struct uart_port *uart = uartms + port;
-	int lenrem;
 
 	if (uart->buf == NULL)
-		return 1;
-
-	if (ROM_uDMAChannelModeGet(uart->rx_dmach|UDMA_PRI_SELECT)
-			!= UDMA_MODE_STOP) {
-		lenrem = ROM_uDMAChannelSizeGet(uart->rx_dmach|UDMA_PRI_SELECT);
-		uart->len = uart->explen - lenrem;
+		return 0;
+	if (uart->rxdma) {
 		HWREG(uart->base+UART_O_DMACTL) &= ~UART_DMA_RX;
 		HWREG(UDMA_ENACLR) = 1 << uart->rx_dmach;
+		uart->len = ROM_uDMAChannelSizeGet(uart->rx_dmach|UDMA_PRI_SELECT);
+		uart->rxdma = 0;
 	}
+
 	uart->buf = NULL;
 	return uart->len;
 }
 
-int uart_read_bytes(int port)
+int uart_read_curlen(int port)
 {
 	struct uart_port *uart = uartms + port;
-	int lenrem;
 
 	if (uart->buf == NULL)
 		return 0;
-	if (ROM_uDMAChannelModeGet(uart->rx_dmach|UDMA_PRI_SELECT)
-			!= UDMA_MODE_STOP) {
-		lenrem = ROM_uDMAChannelSizeGet(uart->rx_dmach|UDMA_PRI_SELECT);
-		uart->len = uart->explen - lenrem;
-	}
+	if (uart->rxdma)
+		return uart->buflen - ROM_uDMAChannelSizeGet(uart->rx_dmach|UDMA_PRI_SELECT);
 	return uart->len;
 }
 
@@ -262,10 +261,12 @@ void uart_close(int port)
 
 static void uart_recv(struct uart_port *uart)
 {
+	uint8_t byte;
+
 	while ((HWREG(uart->base+UART_O_FR) & UART_FR_RXFE) == 0) {
-		HWREG(uart->base+UART_O_DR);
-		if (uart->rxdma)
-			uart->dma_ov++;
+		byte = HWREG(uart->base+UART_O_DR);
+		if (!uart->rxdma && uart->buf && uart->len < uart->buflen)
+			*(uart->buf+uart->len++) = byte;
 	}
 }
 
@@ -287,7 +288,7 @@ static void uart_isr(struct uart_port *uart)
 		HWREG(uart->base+UART_O_DMACTL) &= ~UART_DMA_RX;
 		HWREG(UDMA_CHIS) = (1 << uart->rx_dmach);
 		uart->rxdma = 0;
-		uart->len = uart->explen;
+		uart->len = uart->buflen;
 	}
 
 	if (mis & UART_INT_OE) {
@@ -316,12 +317,7 @@ void uart1_isr(void)
 	uart1_isr_nums++;
 }
 
-int uart_read_dma(int port)
-{
-	return (uartms+port)->rxdma;
-}
-
-int uart_write_dma(int port)
+int uart_in_txdma(int port)
 {
 	return (uartms+port)->txdma;
 }

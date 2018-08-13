@@ -22,9 +22,8 @@ LIBDIR := tm4c
 libtm4c:
 	$(MAKE) --directory=tm4c
 
-nswitch: switch_main.o
-	$(MAKE) --directory=tm4c
-	$(LD) $(LDFLAGS) $^ -L$(LIBDIR) -ltm4c -o $@
+nswitch: switch_main.o libtm4c
+	$(LD) $(LDFLAGS) $< -L$(LIBDIR) -ltm4c -o $@
 #
 # The rule to clean out all the build products.
 #
