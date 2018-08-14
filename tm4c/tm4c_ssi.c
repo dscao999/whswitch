@@ -20,9 +20,7 @@ static struct ssi_port ssims[] = {
 		.base = SSI0_BASE,
 		.tx_dmach = UDMA_CHANNEL_SSI0TX,
 		.rx_dmach = UDMA_CHANNEL_SSI0RX,
-		.txdma = 0,
-		.numr = 0,
-		.numw = 0
+		.buf = NULL,
 	}
 };
 
@@ -52,127 +50,135 @@ void tm4c_ssi_setup(int port)
 	ROM_SysCtlPeripheralEnable(sysperip);
 	while(!ROM_SysCtlPeripheralReady(sysperip))
 			;
+	ROM_SSIClockSourceSet(ssi->base, SSI_CLOCK_SYSTEM);
 	ROM_SSIConfigSetExpClk(ssi->base, HZ, SSI_FRF_MOTO_MODE_0,
-		SSI_MODE_MASTER, 2000000, 16);
+		SSI_MODE_MASTER, 8000000, 8);
 
 	ROM_uDMAChannelAttributeDisable(ssi->tx_dmach, UDMA_ATTR_ALL);
 	ROM_uDMAChannelControlSet(ssi->tx_dmach|UDMA_PRI_SELECT,
-		UDMA_SIZE_16|UDMA_SRC_INC_16|UDMA_DST_INC_NONE|UDMA_ARB_8);
-
-	while (HWREG(ssi->base+SSI_O_SR) & SSI_SR_RNE)
-		HWREG(ssi->base+SSI_O_DR);
+		UDMA_SIZE_8|UDMA_SRC_INC_8|UDMA_DST_INC_NONE|UDMA_ARB_8);
 	ROM_uDMAChannelAttributeDisable(ssi->rx_dmach, UDMA_ATTR_ALL);
 	ROM_uDMAChannelControlSet(ssi->rx_dmach|UDMA_PRI_SELECT,
-		UDMA_SIZE_16|UDMA_SRC_INC_NONE|UDMA_DST_INC_16|UDMA_ARB_8);
+		UDMA_SIZE_8|UDMA_SRC_INC_NONE|UDMA_DST_INC_8|UDMA_ARB_8);
 
-	imask = SSI_IM_RXIM|SSI_IM_RTIM|SSI_IM_RORIM|SSI_IM_EOTIM;
+	imask = SSI_IM_RXIM|SSI_IM_RTIM|SSI_IM_RORIM;
 	HWREG(ssi->base+SSI_O_IM) |= imask;
 	ROM_IntPrioritySet(intr, 0xc0);
 	ROM_IntEnable(intr);
-	HWREG(ssi->base+SSI_O_CR1) |= (SSI_CR1_SSE|SSI_CR1_EOT);
-
-	memset(ssi->buf, 0xed, sizeof(ssi->buf));
+	ROM_SSIEnable(ssi->base);
 }
 
-static void ssi_write_sync(struct ssi_port *ssi, const uint16_t *buf, int len)
+static int ssi_write_direct(struct ssi_port *ssi, const uint8_t *buf, int len)
 {
-	const uint16_t *ubuf;
+	const uint8_t *ubuf;
 	int i;
 
-	for (i = 0, ubuf = (const uint16_t *)buf; i < len; ubuf++, i++) {
+	for (i = 0, ubuf = (const uint8_t *)buf; i < len; ubuf++, i++) {
 		while((HWREG(ssi->base+SSI_O_SR) & SSI_SR_TNF) == 0)
 			;
 		HWREG(ssi->base+SSI_O_DR) = *ubuf;
 	}
+	return len;
 }
 
-void tm4c_ssi_write_sync(int port, const uint16_t *buf, int len)
+int tm4c_ssi_write_sync(int port, const uint8_t *buf, int len)
 {
 	struct ssi_port *ssi = ssims + port;
-	ssi_write_sync(ssi, buf, len);
+	return ssi_write_direct(ssi, buf, len);
 }
 
-void tm4c_ssi_write(int port, const uint16_t *buf, int len, int wait)
+int tm4c_ssi_rwstop(int port)
 {
-	int dmalen;
+	struct ssi_port *ssi = ssims + port;
+	int len;
+
+	if (!ssi->buf)
+		return 0;
+	len = ssi->len;
+	if (ssi->txdma || ssi->rxdma) {
+		HWREG(ssi->base+SSI_O_DMACTL) &= ~(SSI_DMA_TX|SSI_DMA_RX);
+		HWREG(UDMA_ENACLR) = (1 << ssi->tx_dmach)|(1 << ssi->rx_dmach);
+		ssi->txdma = 0;
+		ssi->rxdma = 0;
+		len = ssi->buflen - ROM_uDMAChannelSizeGet(ssi->tx_dmach|UDMA_PRI_SELECT);
+	}
+	return len;
+}
+
+int tm4c_ssi_rwlen(int port)
+{
+	struct ssi_port *ssi = ssims + port;
+	int len;
+
+	if (!ssi->buf)
+		return 0;
+	len =ssi->len;
+	if (ssi->rxdma)
+		len = ssi->len - ROM_uDMAChannelSizeGet(ssi->tx_dmach|UDMA_PRI_SELECT);
+	return len;
+}
+
+int tm4c_ssi_rwstart(int port, const uint8_t *obuf, uint8_t *ibuf, int len)
+{
 	struct ssi_port *ssi = ssims + port;
 
+	if (len <= 0 || len > MAX_DMALEN)
+		return -1;
+	ssi->buf = ibuf;
+	ssi->buflen = len;
+	ssi->len = 0;
+	if (obuf < (uint8_t *)MEMADDR || len < 16) {
+		ssi_write_direct(ssi, obuf, len);
+		return len;
+	}
 	while (ssi->txdma)
 		tm4c_waitint();
-	if (buf < (uint16_t *)MEMADDR) {
-		ssi_write_sync(ssi, buf, len);
-		return;
+	if (ssi->rxdma) {
+		HWREG(ssi->base+SSI_O_DMACTL) &= ~SSI_DMA_RX;
+		HWREG(UDMA_ENACLR) = (1 << ssi->rx_dmach);
+		ssi->rxdma = 0;
 	}
 
-	dmalen = len > 512? 512 : len;
-	ssi->numw += dmalen;
 	ROM_uDMAChannelTransferSet(ssi->tx_dmach|UDMA_PRI_SELECT,
-		UDMA_MODE_BASIC, (void *)buf, (void *)(ssi->base+SSI_O_DR), dmalen);
-	ssi->dmalen_r = SSI_BUFSIZ - ssi->head;
+		UDMA_MODE_BASIC, (void *)obuf, (void *)(ssi->base+SSI_O_DR), len);
 	ROM_uDMAChannelTransferSet(ssi->rx_dmach|UDMA_PRI_SELECT,
-		UDMA_MODE_BASIC, (void *)(ssi->base+SSI_O_DR), ssi->buf, ssi->dmalen_r);
+		UDMA_MODE_BASIC, (void *)(ssi->base+SSI_O_DR), ibuf, len);
 	ssi->txdma = 1;
-	HWREG(ssi->base+SSI_O_DMACTL) |= (SSI_DMA_TX|SSI_DMA_RX);
+	ssi->rxdma = 1;
 	HWREG(UDMA_ENASET) = (1 << ssi->rx_dmach)|(1 << ssi->tx_dmach);
-	while (wait && ssi->txdma)
-		tm4c_waitint();
+	HWREG(ssi->base+SSI_O_DMACTL) |= (SSI_DMA_TX|SSI_DMA_RX);
+	return 0;
 }
 
-void tm4c_ssi_waitdma(int port)
-{
-	struct ssi_port *ssi = ssims + port;
-	while (ssi->txdma)
-		tm4c_waitint();
-}
-	
 static void tm4c_ssi_recv(struct ssi_port *ssi)
 {
-	int head, lenrem;
+	uint8_t byte;
 
 	while (HWREG(ssi->base+SSI_O_SR) & SSI_SR_RNE) {
-		head = ssi->head;
-		lenrem = SSI_BUFSIZ - head;
-		ssi->buf[head++] = HWREG(ssi->base+SSI_O_DR);
-		ssi->numrr++;
-		while (--lenrem > 0 && (HWREG(ssi->base+SSI_O_SR) & SSI_SR_RNE)) {
-			ssi->buf[head++] = HWREG(ssi->base+SSI_O_DR);
-			ssi->numrr++;
-		}
-		ssi->head = head & 0x3f;
+		byte = HWREG(ssi->base+SSI_O_DR);
+		if (ssi->buf)
+			ssi->buf[ssi->len++] = byte;
 	}
 }
 
 static void ssi_isr(struct ssi_port *ssi)
 {
 	uint32_t mis, udma_int;
-	int nbytes;
 
 	mis = HWREG(ssi->base+SSI_O_MIS);
 	if (mis & (SSI_MIS_RTMIS|SSI_MIS_RORMIS))
-		HWREG(ssi->base+SSI_O_ICR) = mis & (SSI_MIS_RTMIS|SSI_MIS_RORMIS);
+		HWREG(ssi->base+SSI_O_ICR) =(SSI_MIS_RTMIS|SSI_MIS_RORMIS);
 	udma_int = HWREG(UDMA_CHIS);
 	if (udma_int & (1 << ssi->rx_dmach)) {
 		HWREG(UDMA_CHIS) = (1 << ssi->rx_dmach);
-		ssi->numr += ssi->dmalen_r;
-		ssi->dma_r_num += ssi->dmalen_r;
-		ssi->head = (ssi->head + ssi->dmalen_r) & 0x3f;
-		ssi->dmalen_r = SSI_BUFSIZ - ssi->head;
-		ROM_uDMAChannelTransferSet(ssi->rx_dmach|UDMA_PRI_SELECT,
-			UDMA_MODE_BASIC, (void *)(ssi->base+SSI_O_DR), (void *)ssi->buf, ssi->dmalen_r);
-		HWREG(UDMA_ENASET) = (1 << ssi->rx_dmach);
+		HWREG(ssi->base+SSI_O_DMACTL) &= ~SSI_DMA_RX;
+		ssi->rxdma = 0;
 	}
 	if (udma_int & (1 << ssi->tx_dmach)) {
 		HWREG(UDMA_CHIS) = (1 << ssi->tx_dmach);
-		HWREG(UDMA_ENACLR) = (1 << ssi->rx_dmach);
-		HWREG(ssi->base+SSI_O_DMACTL) = ~(SSI_DMA_TX|SSI_DMA_RX);
+		HWREG(ssi->base+SSI_O_DMACTL) &= ~SSI_DMA_TX;
 		ssi->txdma = 0;
-		nbytes = ssi->dmalen_r - tm4c_dma_rem(ssi->rx_dmach) - 1;
-		ssi->numr += nbytes;
-		ssi->dma_t_num += nbytes;
-		ssi->head = (ssi->head + nbytes) & 0x3f;
 	}
-	if (mis & SSI_MIS_EOTMIS)
-		ssi->eot++;
 	if (mis & (SSI_MIS_RXMIS|SSI_MIS_RTMIS))
 		tm4c_ssi_recv(ssi);
 	if (mis & SSI_MIS_RORMIS)
@@ -183,19 +189,4 @@ void ssi0_isr(void)
 {
 	ssi_isr(ssims);
 	ssi0_isr_nums++;
-}
-
-int tm4c_ssi_read(int port, uint16_t *buf, int len)
-{
-	struct ssi_port *ssi = ssims + port;
-	int tail, count;
-
-	count = 0;
-	tail = ssi->tail;
-	while (tail != ssi->head && count < len) {
-		buf[count++] = ssi->buf[tail];
-		tail = (tail + 1) & 0x3f;
-	}
-	ssi->tail = tail;
-	return count;
 }

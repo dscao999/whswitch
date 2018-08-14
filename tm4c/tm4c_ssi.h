@@ -7,33 +7,24 @@
 #include "driverlib/ssi.h"
 #include "driverlib/rom.h"
 
-#define SSI_BUFSIZ	64
 struct ssi_port {
 	uint32_t base;
-	uint16_t numr;
-	uint16_t numw;
-	uint16_t numrr;
-	uint16_t overrun;
-	uint16_t dma_r_num;
-	uint16_t dma_t_num;
+	uint8_t *buf;
+	uint8_t buflen;
+	volatile uint8_t len;
 	uint8_t tx_dmach;
 	uint8_t rx_dmach;
-	uint8_t eot;
-	uint8_t dmalen_r;
-	volatile uint8_t txdma;
-	volatile uint8_t head;
-	uint8_t tail;
-	uint8_t pad;
-	uint16_t buf[SSI_BUFSIZ];
+	volatile uint8_t txdma:1;
+	volatile uint8_t rxdma:1;
+	uint8_t overrun;
 };
 
 void tm4c_ssi_setup(int port);
 
 void ssi0_isr(void);
 
-void tm4c_ssi_write(int port, const uint16_t *buf, int len, int wait);
-void tm4c_ssi_write_sync(int port, const uint16_t *buf, int len);
-void tm4c_ssi_waitdma(int port);
-int tm4c_ssi_read(int port, uint16_t *buf, int len);
+int tm4c_ssi_rwstart(int port, const uint8_t *obuf, uint8_t *ibuf, int len);
+int tm4c_ssi_rwlen(int port);
+int tm4c_ssi_rwstop(int port);
 
 #endif /* TM4C_SSI_DSCAO__ */

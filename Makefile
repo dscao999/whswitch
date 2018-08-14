@@ -35,3 +35,7 @@ clean:
 clean_all: clean
 	$(MAKE) --directory=tm4c $@
 	rm -f *.d
+
+ifneq (${MAKECMDGOALS},clean)
+-include $(wildcard tm4c/*.d) __dummy__
+endif

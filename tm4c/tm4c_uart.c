@@ -143,36 +143,35 @@ int uart_write_sync(int port, const char *str, int len)
 int uart_write(int port, const char *str, int len)
 {
 	struct uart_port *uart = uartms + port;
-	int explen;
 
-	if (str < (char *)MEMADDR || len < 8)
+	if (len <= 0 || len > MAX_DMALEN)
+		return -1;
+	if (str < (char *)MEMADDR || len < 16)
 		return uart_direct_write(uart, str, len);
 	while (uart->txdma)
 		tm4c_waitint();
 
-	explen = len > MAX_DMALEN? MAX_DMALEN : len;
 	ROM_uDMAChannelTransferSet(uart->tx_dmach|UDMA_PRI_SELECT,
-		UDMA_MODE_BASIC, (void *)str, (void *)(uart->base+UART_O_DR), explen);
+		UDMA_MODE_BASIC, (void *)str, (void *)(uart->base+UART_O_DR), len);
 	uart->txdma = 1;
 	HWREG(UDMA_ENASET) = 1 << uart->tx_dmach;
 	HWREG(uart->base+UART_O_DMACTL) |= UART_DMA_TX;
-	return explen;
+	return 0;
 }
 
 int uart_read_start(int port, char *buf, int len, int dma)
 {
 	struct uart_port *uart = uartms + port;
 
-	if (len <= 0)
+	if (len <= 0 || (dma && len > MAX_DMALEN))
 		return -1;
 	uart->len = 0;
-        uart->buflen = len;
+	uart->buflen = len;
 	uart->buf = buf;
 	if (dma) {
-		uart->buflen = len > MAX_DMALEN? MAX_DMALEN : len;
 		ROM_uDMAChannelTransferSet(uart->rx_dmach|UDMA_PRI_SELECT,
 			UDMA_MODE_BASIC, (void *)(uart->base+UART_O_DR),
-			(void *)buf, uart->buflen);
+			(void *)buf, len);
 		uart->rxdma = 1;
 		HWREG(UDMA_ENASET) = 1 << uart->rx_dmach;
 		HWREG(uart->base+UART_O_DMACTL) |= UART_DMA_RX;
@@ -189,7 +188,7 @@ int uart_read_stop(int port)
 	if (uart->rxdma) {
 		HWREG(uart->base+UART_O_DMACTL) &= ~UART_DMA_RX;
 		HWREG(UDMA_ENACLR) = 1 << uart->rx_dmach;
-		uart->len = ROM_uDMAChannelSizeGet(uart->rx_dmach|UDMA_PRI_SELECT);
+		uart->len = uart->buflen - ROM_uDMAChannelSizeGet(uart->rx_dmach|UDMA_PRI_SELECT);
 		uart->rxdma = 0;
 	}
 
