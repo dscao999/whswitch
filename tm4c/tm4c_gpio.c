@@ -81,6 +81,7 @@ void tm4c_gpio_setup(enum GPIOPORT port, uint8_t inpin, uint8_t outpin, uint8_t 
 		ROM_GPIOPinTypeGPIOOutput(gpio->base, outpin);
 	if (intrpin & inpin) {
 		pinintr = (intrpin & inpin);
+		ROM_GPIOPadConfigSet(gpio->base, pinintr, GPIO_STRENGTH_2MA, GPIO_PIN_TYPE_STD_WPD);
 		HWREG(gpio->base+GPIO_O_IM) = 0;
 		ROM_GPIOIntTypeSet(gpio->base, pinintr, GPIO_FALLING_EDGE);
 		HWREG(gpio->base+GPIO_O_ICR) = 0x0ff;
@@ -113,11 +114,13 @@ static void gpio_isr(struct gpio_port *gpio)
 	gpio->isrnum = (gpio->isrnum & ~mask)|isrnum;
 }
 
-void gpioe_isr(void)
+static uint32_t debug_isrnum = 0;
+void gpiob_isr(void)
 {
-	struct gpio_port *gpio = gpioms+GPIOE;
+	struct gpio_port *gpio = gpioms+GPIOB;
 
 	gpio_isr(gpio);
+	debug_isrnum++;
 }
 
 int  tm4c_gpio_isrnum(enum GPIOPORT port, uint8_t pin)
@@ -158,4 +161,19 @@ void tm4c_ledlit(enum ledcolor led, int onoff)
 
 	v = onoff? ledpin : 0;
 	ROM_GPIOPinWrite(GPIO_PORTF_BASE, ledpin, v);
+}
+
+void tm4c_gpio_write_onoff(enum GPIOPORT port, uint8_t pins, int onoff)
+{
+	struct gpio_port *gpio = gpioms+port;
+	int v;
+
+	v = onoff? pins : 0;
+	ROM_GPIOPinWrite(gpio->base, pins, v);
+}
+
+int tm4c_gpio_read(enum GPIOPORT port, uint8_t pins)
+{
+	struct gpio_port *gpio = gpioms+port;
+	return ROM_GPIOPinRead(gpio->base, pins);
 }

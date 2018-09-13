@@ -38,4 +38,5 @@ clean_all: clean
 
 ifneq (${MAKECMDGOALS},clean)
 -include $(wildcard tm4c/*.d) __dummy__
+-include $(wildcard *.d) __dummy__
 endif

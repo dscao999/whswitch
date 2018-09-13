@@ -18,11 +18,12 @@ struct gpio_port {
 
 enum ledcolor {RED, BLUE, GREEN};
 
-void gpioe_isr(void);
+void gpiob_isr(void);
 
 void tm4c_gpio_setup(enum GPIOPORT port, uint8_t inps, uint8_t outps, uint8_t intrps);
-void tm4c_gpio_write(enum GPIOPORT port, uint8_t pins, int on_off);
+void tm4c_gpio_write_onoff(enum GPIOPORT port, uint8_t pins, int onoff);
 int tm4c_gpio_isrnum(enum GPIOPORT port, uint8_t pin);
+int tm4c_gpio_read(enum GPIOPORT port, uint8_t pins);
 
 void tm4c_ledlit(enum ledcolor led, int onoff);
 #endif /* TM4C_GPIO_DSCAO__ */

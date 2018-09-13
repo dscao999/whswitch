@@ -30,9 +30,14 @@ extern const uint32_t MEMADDR;
 #define time_arrived(tmark) \
 	((int32_t)sys_ticks - (int32_t)tmark >= 0)
 
-static inline int msec2tick(int msec)
+static inline uint32_t msec2tick(int msec)
 {
-	return (msec+5)/10;
+	return ((uint32_t)msec+5u)/10;
+}
+
+static inline uint32_t tm4c_time_to(int msec)
+{
+	return sys_ticks + msec2tick(msec);
 }
 
 static inline void tm4c_memsync(void)
