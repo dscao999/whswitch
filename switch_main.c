@@ -37,7 +37,6 @@ void __attribute__((noreturn)) main(void)
 	uint16_t plen, clen, iport;
 	char mesg[80], buf[80];
 	int p_isrs, gpio_isrs, len, usedma;
-	uint32_t smark;
 
 	tm4c_gpio_setup(GPIOA, 0, 0, 0);
 	tm4c_gpio_setup(GPIOB, GPIO_PIN_5, 0, GPIO_PIN_5);
@@ -50,7 +49,6 @@ void __attribute__((noreturn)) main(void)
 	tm4c_delay(2000);
 	tm4c_ledlit(GREEN, 0);
 
-	smark = tm4c_time_to(1000);
 	uart_open(0);
 	uart_open(1);
 	uart_write(0, hello, strlen(hello));
@@ -72,14 +70,13 @@ void __attribute__((noreturn)) main(void)
 			plen = clen;
 		}
 		gpio_isrs = tm4c_gpio_isrnum(GPIOB, GPIO_PIN_5);
-		if (gpio_isrs != p_isrs && time_after(smark)) {
+		if (gpio_isrs != p_isrs) {
 			uart_wait_txdma(0);
 			len = num2str_dec(gpio_isrs, buf, sizeof(buf));
 			buf[len] = 0x0a;
 			buf[len+1] = 0x0d;
 			uart_write(0, buf, len+2);
 			p_isrs = gpio_isrs;
-			smark = tm4c_time_to(2000);
 		}
 		if (memchr(mesg, clen, '\r') < clen) {
 			uart_read_stop(iport);
