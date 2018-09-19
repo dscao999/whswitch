@@ -42,8 +42,8 @@ SECTIONS
 	.bss :
 	{
 		_bss = .;
-		tm4c_startup.o(.bss*)
-		tm4c_dma.o(.bss*)
+		tm4c/tm4c_startup.o(.bss*)
+		tm4c/tm4c_dma.o(.bss*)
 		*(.bss*)
 		*(COMMON)
 		_ebss = .;

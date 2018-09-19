@@ -8,6 +8,8 @@
 #include "tm4c_gpio.h"
 #include "tm4c_uart.h"
 #include "tm4c_dma.h"
+#include "tm4c_ssi.h"
+#include "oled.h"
 
 //*****************************************************************************
 //
@@ -32,17 +34,22 @@ __error__(char *pcFilename, uint32_t ui32Line)
 static const char *RESET = "ReseT";
 static const char hello[] = "Initialization Completed!\r\n";
 
+static struct oled_ctrl oled = {
+	.cp = GPIOE, .cmdpin = GPIO_PIN_4, .rstpin = GPIO_PIN_5 };
+
 void __attribute__((noreturn)) main(void)
 {
 	uint16_t plen, clen, iport;
-	char mesg[80], buf[80];
+	static char mesg[80], buf[80];
 	int p_isrs, gpio_isrs, len, usedma;
+	
 
 	tm4c_gpio_setup(GPIOA, 0, 0, 0);
 	tm4c_gpio_setup(GPIOB, GPIO_PIN_5, 0, GPIO_PIN_5);
 	tm4c_gpio_setup(GPIOC, 0, 0, 0);
+	tm4c_gpio_setup(GPIOE, 0, GPIO_PIN_4|GPIO_PIN_5, 0);
 	tm4c_gpio_setup(GPIOF, 0, GPIO_PIN_3|GPIO_PIN_2|GPIO_PIN_1, 0); 
-	
+
 	tm4c_setup();
 	tm4c_dma_enable();
 	tm4c_ledlit(GREEN, 1);
@@ -51,11 +58,11 @@ void __attribute__((noreturn)) main(void)
 
 	uart_open(0);
 	uart_open(1);
+	tm4c_ssi_setup(0);
 	uart_write(0, hello, strlen(hello));
 	uart_write(1, hello, strlen(hello));
-	tm4c_ledlit(RED, 1);
-	tm4c_delay(500);
-	tm4c_ledlit(RED, 0);
+
+	oled_reset(&oled);
 
 	usedma = 1;
 	iport = 1;

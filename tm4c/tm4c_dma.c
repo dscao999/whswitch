@@ -1,7 +1,9 @@
+#include <stdint.h>
+#include <stdbool.h>
+#include <driverlib/udma.h>
 #include "tm4c_dma.h"
-#include "driverlib/udma.h"
 
-static struct dmactl dmacr[32];
+static struct dmactl dmacr[64] __attribute__((aligned(1024)));
 uint32_t udmaerr = 0;
 
 void tm4c_dma_enable(void)

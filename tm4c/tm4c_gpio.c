@@ -81,7 +81,6 @@ void tm4c_gpio_setup(enum GPIOPORT port, uint8_t inpin, uint8_t outpin, uint8_t 
 		ROM_GPIOPinTypeGPIOOutput(gpio->base, outpin);
 	if (intrpin & inpin) {
 		pinintr = (intrpin & inpin);
-//		ROM_GPIOPadConfigSet(gpio->base, pinintr, GPIO_STRENGTH_2MA, GPIO_PIN_TYPE_STD_WPD);
 		HWREG(gpio->base+GPIO_O_IM) = 0;
 		ROM_GPIOIntTypeSet(gpio->base, pinintr, GPIO_FALLING_EDGE);
 		HWREG(gpio->base+GPIO_O_ICR) = 0x0ff;
@@ -163,7 +162,7 @@ void tm4c_ledlit(enum ledcolor led, int onoff)
 	ROM_GPIOPinWrite(GPIO_PORTF_BASE, ledpin, v);
 }
 
-void tm4c_gpio_write_onoff(enum GPIOPORT port, uint8_t pins, int onoff)
+void tm4c_gpio_write(enum GPIOPORT port, uint8_t pins, int onoff)
 {
 	struct gpio_port *gpio = gpioms+port;
 	int v;

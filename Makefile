@@ -20,11 +20,11 @@ LDSCRIPT := tm4c/tm4c.ld
 # The default rule, which causes the driver library to be built.
 #
 
-tm4c/libtm4c.a: $(LIBOBJ)
-	$(AR) rv $@ $?
+#tm4c/libtm4c.a: $(LIBOBJ)
+#	$(AR) rv $@ $?
 
-nswitch: switch_main.o tm4c/libtm4c.a
-	$(LD) $(LDFLAGS) $< -L$(LIBDIR) -ltm4c -o $@
+nswitch: switch_main.o oled.o $(LIBOBJ)
+	$(LD) $(LDFLAGS) $^ -o $@
 #
 # The rule to clean out all the build products.
 #

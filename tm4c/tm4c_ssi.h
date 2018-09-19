@@ -9,13 +9,12 @@
 
 struct ssi_port {
 	uint32_t base;
-	uint8_t *buf;
+	char *buf;
 	uint8_t buflen;
 	volatile uint8_t len;
 	uint8_t tx_dmach;
 	uint8_t rx_dmach;
-	volatile uint8_t txdma:1;
-	volatile uint8_t rxdma:1;
+	volatile uint8_t dma;
 	uint8_t overrun;
 };
 
@@ -23,8 +22,9 @@ void tm4c_ssi_setup(int port);
 
 void ssi0_isr(void);
 
-int tm4c_ssi_rwstart(int port, const uint8_t *obuf, uint8_t *ibuf, int len);
+int tm4c_ssi_rwstart(int port, const char *txbuf, char *rvbuf, int len);
 int tm4c_ssi_rwlen(int port);
 int tm4c_ssi_rwstop(int port);
+int tm4c_ssi_rwst(int port);
 
 #endif /* TM4C_SSI_DSCAO__ */
