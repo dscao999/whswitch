@@ -107,7 +107,7 @@ int tm4c_ssi_rwst(int port)
 	struct ssi_port *ssi = ssims + port;
 
 	if (!ssi->buf || ssi->dma == 0)
-		return 0;
+		return HWREG(ssi->base+SSI_O_SR) & SSI_SR_BSY;
 	return 1;
 }
 
@@ -143,8 +143,6 @@ int tm4c_ssi_rwstart(int port, const char *txbuf, char *rvbuf, int len)
 		ssi->buf = NULL;
 		return len;
 	}
-	while (ssi->dma)
-		tm4c_waitint();
 
 	ROM_uDMAChannelTransferSet(ssi->tx_dmach|UDMA_PRI_SELECT,
 		UDMA_MODE_BASIC, (void *)txbuf, (void *)(ssi->base+SSI_O_DR), len);

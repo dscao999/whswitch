@@ -15,6 +15,8 @@ struct oled_ctrl {
 
 void oled_reset(struct oled_ctrl *oled);
 
+void oled_picset(struct oled_ctrl *od, int color);
+
 static inline void oled_display_onoff(struct oled_ctrl *od, int on)
 {
 	if (on)

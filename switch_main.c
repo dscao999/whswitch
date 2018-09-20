@@ -84,6 +84,12 @@ void __attribute__((noreturn)) main(void)
 			buf[len+1] = 0x0d;
 			uart_write(0, buf, len+2);
 			p_isrs = gpio_isrs;
+			oled_display_onoff(&oled, 0);
+			oled_picset(&oled, gpio_isrs);
+			tm4c_ledlit(RED, 1);
+			tm4c_delay(100);
+			tm4c_ledlit(RED, 0);
+			oled_display_onoff(&oled, 1);
 		}
 		if (memchr(mesg, clen, '\r') < clen) {
 			uart_read_stop(iport);
