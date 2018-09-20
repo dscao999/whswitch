@@ -22,13 +22,13 @@ static inline void oled_set_color(struct oled_ctrl *od, int color)
 
 	switch(color % 3) {
 	case 0:
-		color = 0x001f;
+		color = 0x00f8;
 		break;
 	case 1:
-		color = 0x07e0;
+		color = 0xe007;
 		break;
 	case 2:
-		color = 0xf800;
+		color = 0x1f00;
 		break;
 	default:
 		color = 0xffff;
