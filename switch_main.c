@@ -40,8 +40,10 @@ static struct oled_ctrl oled = {
 void __attribute__((noreturn)) main(void)
 {
 	uint16_t plen, clen, iport;
+	uint8_t clicked, color;
 	static char mesg[80], buf[80];
 	int p_isrs, gpio_isrs, len, usedma;
+	uint32_t tmark;
 	
 
 	tm4c_gpio_setup(GPIOA, 0, 0, 0);
@@ -56,6 +58,8 @@ void __attribute__((noreturn)) main(void)
 	tm4c_delay(2000);
 	tm4c_ledlit(GREEN, 0);
 
+	color = 0;
+	tmark = tm4c_tick_after(300);
 	uart_open(0);
 	uart_open(1);
 	tm4c_ssi_setup(0);
@@ -63,6 +67,7 @@ void __attribute__((noreturn)) main(void)
 	uart_write(1, hello, strlen(hello));
 
 	oled_reset(&oled);
+	clicked = 0;
 
 	usedma = 1;
 	iport = 1;
@@ -78,6 +83,13 @@ void __attribute__((noreturn)) main(void)
 		}
 		gpio_isrs = tm4c_gpio_isrnum(GPIOB, GPIO_PIN_5);
 		if (gpio_isrs != p_isrs) {
+			p_isrs = gpio_isrs;
+		 	if (time_after(tmark))
+				clicked = 1;
+			tmark = tm4c_tick_after(300);
+		}
+		if (clicked) {
+			clicked = 0;
 			uart_wait_txdma(0);
 			len = num2str_dec(gpio_isrs, buf, sizeof(buf));
 			buf[len] = 0x0a;
@@ -85,11 +97,12 @@ void __attribute__((noreturn)) main(void)
 			uart_write(0, buf, len+2);
 			p_isrs = gpio_isrs;
 			oled_display_onoff(&oled, 0);
-			oled_picset(&oled, gpio_isrs);
+			color += 1;
+			oled_picset(&oled, color);
 			tm4c_ledlit(RED, 1);
 			tm4c_delay(100);
-			tm4c_ledlit(RED, 0);
 			oled_display_onoff(&oled, 1);
+			tm4c_ledlit(RED, 0);
 		}
 		if (memchr(mesg, clen, '\r') < clen) {
 			uart_read_stop(iport);

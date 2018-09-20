@@ -35,11 +35,6 @@ static inline uint32_t msec2tick(int msec)
 	return ((uint32_t)msec+5u)/10;
 }
 
-static inline uint32_t tm4c_time_to(int msec)
-{
-	return sys_ticks + msec2tick(msec);
-}
-
 static inline void tm4c_memsync(void)
 {
 	__asm__ __volatile__("dsb");
