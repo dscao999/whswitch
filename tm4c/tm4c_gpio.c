@@ -82,7 +82,7 @@ void tm4c_gpio_setup(enum GPIOPORT port, uint8_t inpin, uint8_t outpin, uint8_t 
 	if (intrpin & inpin) {
 		pinintr = (intrpin & inpin);
 		HWREG(gpio->base+GPIO_O_IM) = 0;
-		ROM_GPIOIntTypeSet(gpio->base, pinintr, GPIO_FALLING_EDGE);
+		ROM_GPIOIntTypeSet(gpio->base, pinintr, GPIO_RISING_EDGE);
 		HWREG(gpio->base+GPIO_O_ICR) = 0x0ff;
 		HWREG(gpio->base+GPIO_O_IM) = pinintr;
 		ROM_IntPrioritySet(intr, 0x60);

@@ -52,7 +52,7 @@ void tm4c_ssi_setup(int port)
 			;
 	ROM_SSIClockSourceSet(ssi->base, SSI_CLOCK_SYSTEM);
 	ROM_SSIConfigSetExpClk(ssi->base, HZ, SSI_FRF_MOTO_MODE_0,
-		SSI_MODE_MASTER, 4000000, 8);
+		SSI_MODE_MASTER, 10000000, 8);
 
 	ROM_uDMAChannelAttributeDisable(ssi->tx_dmach, UDMA_ATTR_ALL);
 	ROM_uDMAChannelControlSet(ssi->tx_dmach|UDMA_PRI_SELECT,
