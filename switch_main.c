@@ -8,7 +8,6 @@
 #include "tm4c_gpio.h"
 #include "tm4c_uart.h"
 #include "tm4c_dma.h"
-#include "tm4c_ssi.h"
 #include "oled.h"
 
 //*****************************************************************************
@@ -37,6 +36,8 @@ static const char hello[] = "Initialization Completed!\r\n";
 static struct oled_ctrl oled = {
 	.cp = GPIOE, .cmdpin = GPIO_PIN_4, .rstpin = GPIO_PIN_5 };
 
+extern char *png_begin[], *png_end[];
+
 void __attribute__((noreturn)) main(void)
 {
 	uint16_t plen, clen, iport;
@@ -56,13 +57,26 @@ void __attribute__((noreturn)) main(void)
 	tm4c_dma_enable();
 
 	color = 0;
-	uart_open(0);
-	uart_open(1);
 	tm4c_ledlit(GREEN, 1);
 	tm4c_delay(1000);
 	tm4c_ledlit(GREEN, 0);
+	uart_open(0);
+	uart_open(1);
 	uart_write(0, hello, strlen(hello));
 	uart_write(1, hello, strlen(hello));
+
+	len = num2str_hex((uint32_t)png_begin, buf);
+	buf[len] = 0x0a;
+	buf[len+1] = 0x0d;
+	uart_write(0, buf, len+2);
+	uart_write(1, buf, len+2);
+	uart_wait_txdma(0);
+	uart_wait_txdma(1);
+	len = num2str_hex((uint32_t)png_end, buf);
+	buf[len] = 0x0a;
+	buf[len+1] = 0x0d;
+	uart_write(0, buf, len+2);
+	uart_write(1, buf, len+2);
 
 	oled_reset(&oled);
 	clicked = 0;

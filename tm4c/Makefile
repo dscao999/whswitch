@@ -27,3 +27,7 @@ clean:
 
 clean_all: clean
 	rm -f *.d
+
+ifneq (${MAKECMDGOALS},clean)
+-include $(wildcard *.d) __dummy__
+endif

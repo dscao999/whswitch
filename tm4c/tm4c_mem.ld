@@ -20,32 +20,10 @@
  * 
  * This is part of revision 2.1.4.178 of the EK-TM4C123GXL Firmware Package.
  *
- ****************************************************************************/
+ *****************************************************************************/
 
-	.text :
-	{
-		_text = .;
-		KEEP(*(.isr_vector))
-		*(.text*)
-		*(.rodata*)
-		_etext = .;
-	} > FLASH
-
-	.bss :
-	{
-		_bss = .;
-		tm4c/tm4c_startup.o(.bss*)
-		tm4c/tm4c_dma.o(.bss*)
-		*(.bss*)
-		*(COMMON)
-		_ebss = .;
-	} > SRAM
-
-	.data : AT(ADDR(.text) + SIZEOF(.text))
-	{
-		_data = .;
-		_ldata = LOADADDR(.data);
-		*(vtable)
-		*(.data*)
-		_edata = .;
-	} > SRAM
+MEMORY
+{
+	FLASH (rx) : ORIGIN = 0x00000000, LENGTH = 0x00040000
+	SRAM (rwx) : ORIGIN = 0x20000000, LENGTH = 0x00008000
+}

@@ -53,7 +53,8 @@ dkms.conf
 #
 #  local untracked files
 #
-syslib
+png/
+syslib/
 # vim swap file
 .*.swp
 cscope.files

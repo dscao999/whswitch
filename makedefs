@@ -73,6 +73,7 @@ PREFIX:=${shell type $(DEF_PREFIX)-gcc > /dev/null 2>&1 && \
 # The command for calling the compiler.
 #
 CC=$(PREFIX)-gcc
+AS=$(PREFIX)-as
 
 #
 # The location of the C compiler
