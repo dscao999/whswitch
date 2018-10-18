@@ -5,6 +5,8 @@
 #include "tm4c_ssi.h"
 #include "tm4c_setup.h"
 
+#define NULL	((void *)0)
+
 struct oled_ctrl {
 	enum GPIOPORT cp;
 	uint8_t ssi, cmdpin, rstpin;
@@ -23,7 +25,7 @@ static inline void oled_display_onoff(struct oled_ctrl *od, int on)
 		od->pbuf[0] = 0xaf;
 	else
 		od->pbuf[0] = 0xae;
-	tm4c_ssi_rwstart(0, od->pbuf, od->tbuf, 1);
+	tm4c_ssi_rwstart(0, od->pbuf, od->tbuf, 1, NULL);
 }
 
 #endif /* OLED_MANIP_DSCAO__ */

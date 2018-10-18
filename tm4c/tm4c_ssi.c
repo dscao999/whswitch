@@ -99,6 +99,8 @@ int tm4c_ssi_rwstop(int port)
 		len = ssi->buflen - ROM_uDMAChannelSizeGet(ssi->tx_dmach|UDMA_PRI_SELECT);
 		ssi->dma = 0;
 	}
+	ssi->buf = NULL;
+	ssi->pipo = NULL;
 	return len;
 }
 
@@ -124,15 +126,17 @@ int tm4c_ssi_rwlen(int port)
 	return len;
 }
 
-int tm4c_ssi_rwstart(int port, const char *txbuf, char *rvbuf, int len)
+int tm4c_ssi_rwstart(int port, const char *txbuf, char *rvbuf, int len, volatile uint8_t *pipo)
 {
 	struct ssi_port *ssi = ssims + port;
+	int dmamod;
 
 	if (len <= 0 || len > MAX_DMALEN)
 		return -1;
 	if (ssi->dma)
 		return -2;
 
+	ssi->pipo = pipo;
 	ssi->buf = rvbuf;
 	ssi->buflen = len;
 	ssi->len = 0;
@@ -144,10 +148,20 @@ int tm4c_ssi_rwstart(int port, const char *txbuf, char *rvbuf, int len)
 		return len;
 	}
 
+	if (pipo != NULL)
+		dmamod = UDMA_MODE_PINGPONG;
+	else
+		dmamod = UDMA_MODE_BASIC;
 	ROM_uDMAChannelTransferSet(ssi->tx_dmach|UDMA_PRI_SELECT,
-		UDMA_MODE_BASIC, (void *)txbuf, (void *)(ssi->base+SSI_O_DR), len);
+		dmamod, (void *)txbuf, (void *)(ssi->base+SSI_O_DR), len);
 	ROM_uDMAChannelTransferSet(ssi->rx_dmach|UDMA_PRI_SELECT,
-		UDMA_MODE_BASIC, (void *)(ssi->base+SSI_O_DR), rvbuf, len);
+		dmamod, (void *)(ssi->base+SSI_O_DR), ssi->buf, len);
+	if (dmamod == UDMA_MODE_PINGPONG) {
+		ROM_uDMAChannelTransferSet(ssi->tx_dmach|UDMA_ALT_SELECT,
+			dmamod, (void *)(txbuf+len), (void *)(ssi->base+SSI_O_DR), len);
+		ROM_uDMAChannelTransferSet(ssi->rx_dmach|UDMA_ALT_SELECT,
+			dmamod, (void *)(ssi->base+SSI_O_DR), ssi->buf, len);
+	}
 	HWREG(UDMA_ENASET) = (1 << ssi->rx_dmach)|(1 << ssi->tx_dmach);
 	HWREG(ssi->base+SSI_O_DMACTL) |= (SSI_DMA_TX|SSI_DMA_RX);
 	ssi->dma = 2;
@@ -185,14 +199,20 @@ static void ssi_isr(struct ssi_port *ssi)
 			HWREG(ssi->base+SSI_O_DMACTL) &= ~SSI_DMA_RX;
 			HWREG(UDMA_CHIS) = (1 << ssi->rx_dmach);
 			mod = (dmatbl+ssi->rx_dmach)->ctrl & UDMA_CHCTL_XFERMODE_M;
+			if (mod == UDMA_MODE_STOP) {
+				ssi->buf = 0;
+				ssi->dma--;
+			}
 		}
 		if (udma_int & (1 << ssi->tx_dmach)) {
 			HWREG(ssi->base+SSI_O_DMACTL) &= ~SSI_DMA_TX;
 			HWREG(UDMA_CHIS) = (1 << ssi->tx_dmach);
 			mod = (dmatbl+ssi->tx_dmach)->ctrl & UDMA_CHCTL_XFERMODE_M;
+			if (mod == UDMA_MODE_PINGPONG)
+				*ssi->pipo += 1;
+			else if (mod == UDMA_MODE_STOP)
+				ssi->dma--;
 		}
-		if (mod == UDMA_MODE_STOP)
-			ssi->dma--;
 	}
 	if (mis & (SSI_MIS_RXMIS|SSI_MIS_RTMIS))
 		tm4c_ssi_recv(ssi);

@@ -52,13 +52,13 @@ void oled_fill_display(struct oled_ctrl *od, int color)
 
 	pos = reset_start_addr(od->pbuf, 0);
 	ssi_wait(od->ssi);
-	tm4c_ssi_rwstart(od->ssi, od->pbuf, od->tbuf, pos);
+	tm4c_ssi_rwstart(od->ssi, od->pbuf, od->tbuf, pos, NULL);
 
 	oled_set_color(od, color);
 	tm4c_gpio_write(od->cp, od->cmdpin, 1);
 	for (i = 0; i < 12; i++) {
 		ssi_wait(od->ssi);
-		tm4c_ssi_rwstart(od->ssi, od->pbuf, od->tbuf, 1024);
+		tm4c_ssi_rwstart(od->ssi, od->pbuf, od->tbuf, 1024, NULL);
 	}
 	ssi_wait(od->ssi);
 	tm4c_gpio_write(od->cp, od->cmdpin, 0);
@@ -75,7 +75,7 @@ void oled_reset(struct oled_ctrl *od)
 
 	od->pbuf[0] = 0xA0;
 	od->pbuf[1] = 0x40;
-	tm4c_ssi_rwstart(od->ssi, od->pbuf, od->tbuf, 2);
+	tm4c_ssi_rwstart(od->ssi, od->pbuf, od->tbuf, 2, NULL);
 
 	oled_fill_display(od, 0);
 	oled_display_onoff(od, 1);
