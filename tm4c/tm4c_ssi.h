@@ -10,8 +10,8 @@
 struct ssi_port {
 	uint32_t base;
 	char *buf;
-	uint8_t buflen;
-	volatile uint8_t len;
+	uint16_t buflen;
+	volatile uint16_t len;
 	uint8_t tx_dmach;
 	uint8_t rx_dmach;
 	volatile uint8_t dma;

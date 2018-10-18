@@ -156,35 +156,43 @@ int tm4c_ssi_rwstart(int port, const char *txbuf, char *rvbuf, int len)
 
 static void tm4c_ssi_recv(struct ssi_port *ssi)
 {
-	uint8_t byte, count;
+	uint8_t count, *buf;
+	static uint8_t tmpbuf[8];
 
+	if (ssi->buf)
+		buf = (uint8_t *)ssi->buf;
+	else
+		buf = tmpbuf;
 	count = 0;
-	while ((HWREG(ssi->base+SSI_O_SR) & SSI_SR_RNE) && count < 8) {
-		byte = HWREG(ssi->base+SSI_O_DR);
-		if (ssi->buf)
-			ssi->buf[ssi->len++] = byte;
-		count++;
-	}
+	while ((HWREG(ssi->base+SSI_O_SR) & SSI_SR_RNE) && count < 8)
+		buf[count++] = HWREG(ssi->base+SSI_O_DR);
+	ssi->len += count;
 }
 
 static void ssi_isr(struct ssi_port *ssi)
 {
-	uint32_t mis, udma_int;
+	uint32_t mis, udma_int, mod;
+	struct dmactl *dmatbl;
 
 	mis = HWREG(ssi->base+SSI_O_MIS);
 	if (mis & (SSI_MIS_RTMIS|SSI_MIS_RORMIS))
 		HWREG(ssi->base+SSI_O_ICR) =(SSI_MIS_RTMIS|SSI_MIS_RORMIS);
 	udma_int = HWREG(UDMA_CHIS);
 	if (udma_int & ((1 << ssi->rx_dmach)|(1 << ssi->tx_dmach))) {
+		dmatbl = (struct dmactl *)HWREG(UDMA_CTLBASE);
+		mod = UDMA_MODE_BASIC;
 		if (udma_int & (1 << ssi->rx_dmach)) {
 			HWREG(ssi->base+SSI_O_DMACTL) &= ~SSI_DMA_RX;
 			HWREG(UDMA_CHIS) = (1 << ssi->rx_dmach);
+			mod = (dmatbl+ssi->rx_dmach)->ctrl & UDMA_CHCTL_XFERMODE_M;
 		}
 		if (udma_int & (1 << ssi->tx_dmach)) {
 			HWREG(ssi->base+SSI_O_DMACTL) &= ~SSI_DMA_TX;
 			HWREG(UDMA_CHIS) = (1 << ssi->tx_dmach);
+			mod = (dmatbl+ssi->tx_dmach)->ctrl & UDMA_CHCTL_XFERMODE_M;
 		}
-		ssi->dma--;
+		if (mod == UDMA_MODE_STOP)
+			ssi->dma--;
 	}
 	if (mis & (SSI_MIS_RXMIS|SSI_MIS_RTMIS))
 		tm4c_ssi_recv(ssi);

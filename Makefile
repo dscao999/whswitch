@@ -2,15 +2,19 @@
 # Include the common make definitions.
 #
 
-.PHONY: all clean clean_all
+.PHONY: all clean clean_all tm4c_lib
 
-all: nswitch_all
+all: nswitch
 
 include makedefs
 
 LIBDIR := tm4c
-LIBSRC = $(wildcard $(LIBDIR)/*.c)
+LIBSRC = $(wildcard tm4c/*.c)
 LIBOBJ = $(subst .c,.o, $(LIBSRC))
+
+SRC = $(wildcard *.c)
+OBJ = $(subst .c,.o, $(SRC))
+OBJ += piggy.o
 
 INCLS := -isystem syslib -I$(LIBDIR)
 CFLAGS += -DTARGET_IS_TM4C123_RB2 -DPART_TM4C123GH6PM $(INCLS)
@@ -20,11 +24,10 @@ LDSCRIPT := nswitch.ld
 # The default rule, which causes the driver library to be built.
 #
 
-nswitch_all:
+tm4c/libtm4c.a: $(LIBOBJ)
 	$(MAKE) -C $(LIBDIR)
-	$(MAKE) nswitch
 
-nswitch: switch_main.o oled.o piggy.o
+nswitch: $(OBJ) tm4c/libtm4c.a
 	$(LD) $(LDFLAGS) $^ -L $(LIBDIR) -ltm4c -o $@
 #
 # The rule to clean out all the build products.
