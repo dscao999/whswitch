@@ -78,7 +78,7 @@ void __attribute__((noreturn)) main(void)
 	uart_write(0, buf, len+2);
 	uart_write(1, buf, len+2);
 
-	oled_reset(&oled);
+	oled_init(&oled, 0);
 	clicked = 0;
 
 	usedma = 1;
@@ -109,10 +109,10 @@ void __attribute__((noreturn)) main(void)
 			buf[len] = 0x0a;
 			buf[len+1] = 0x0d;
 			uart_write(0, buf, len+2);
+			tm4c_ledlit(RED, 1);
 			oled_display_onoff(&oled, 0);
 			color += 1;
-			oled_picset(&oled, color);
-			tm4c_ledlit(RED, 1);
+			oled_fill_display(&oled, color);
 			tm4c_delay(100);
 			oled_display_onoff(&oled, 1);
 			tm4c_ledlit(RED, 0);

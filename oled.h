@@ -7,15 +7,15 @@
 
 struct oled_ctrl {
 	enum GPIOPORT cp;
-	uint8_t cmdpin, rstpin;
+	uint8_t ssi, cmdpin, rstpin;
 	char pbuf[1024];
 	char abuf[1024];
 	char tbuf[1024];
 };
 
+void oled_fill_display(struct oled_ctrl *od, int color);
 void oled_reset(struct oled_ctrl *oled);
-
-void oled_picset(struct oled_ctrl *od, int color);
+void oled_init(struct oled_ctrl *od, int ssiport);
 
 static inline void oled_display_onoff(struct oled_ctrl *od, int on)
 {

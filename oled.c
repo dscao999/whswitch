@@ -4,15 +4,21 @@
  */
 #include "oled.h"
 
-static inline int oled_reset_addr(struct oled_ctrl *od, int idx)
+static inline int reset_start_addr(char *buf, int idx)
 {
-	od->pbuf[idx+0] = 0x15;
-	od->pbuf[idx+1] = 0x00;
-	od->pbuf[idx+2] = 0x5f;
-	od->pbuf[idx+3] = 0x75;
-	od->pbuf[idx+4] = 0x00;
-	od->pbuf[idx+5] = 0x3f;
-	return idx + 6;
+	buf[idx++] = 0x15;
+	buf[idx++] = 0x00;
+	buf[idx++] = 0x5f;
+	buf[idx++] = 0x75;
+	buf[idx++] = 0x00;
+	buf[idx++] = 0x3f;
+	return idx;
+}
+
+static inline void ssi_wait(int port)
+{
+	while (tm4c_ssi_rwst(port))
+		tm4c_waitint();
 }
 
 static inline void oled_set_color(struct oled_ctrl *od, int color)
@@ -40,44 +46,48 @@ static inline void oled_set_color(struct oled_ctrl *od, int color)
 		*cdx++ = color;
 }
 
-void oled_picset(struct oled_ctrl *od, int color)
+void oled_fill_display(struct oled_ctrl *od, int color)
 {
 	int i, pos;
 
-	pos = oled_reset_addr(od, 0);
-	tm4c_ssi_rwstart(0, od->pbuf, od->tbuf, pos);
-	
-	oled_set_color(od, color);
+	pos = reset_start_addr(od->pbuf, 0);
+	ssi_wait(od->ssi);
+	tm4c_ssi_rwstart(od->ssi, od->pbuf, od->tbuf, pos);
 
+	oled_set_color(od, color);
 	tm4c_gpio_write(od->cp, od->cmdpin, 1);
 	for (i = 0; i < 12; i++) {
-		while (tm4c_ssi_rwst(0))
-			tm4c_waitint();
-		tm4c_ssi_rwstart(0, od->pbuf, od->tbuf, 1024);
+		ssi_wait(od->ssi);
+		tm4c_ssi_rwstart(od->ssi, od->pbuf, od->tbuf, 1024);
 	}
-	while (tm4c_ssi_rwst(0))
-		tm4c_waitint();
+	ssi_wait(od->ssi);
 	tm4c_gpio_write(od->cp, od->cmdpin, 0);
 }
 
-void oled_reset(struct oled_ctrl *oled)
+void oled_reset(struct oled_ctrl *od)
 {
-	tm4c_gpio_write(oled->cp, oled->cmdpin, 0);
-	tm4c_gpio_write(oled->cp, oled->rstpin, 1);
 	tm4c_ledlit(RED, 1);
-	tm4c_delay(500);
-	tm4c_ledlit(RED, 0);
-
-	tm4c_gpio_write(oled->cp, oled->rstpin, 0);
+	tm4c_delay(200);
+	tm4c_gpio_write(od->cp, od->rstpin, 0);
 	tm4c_delay(10);
-	tm4c_gpio_write(oled->cp, oled->rstpin, 1);
-	tm4c_ssi_setup(0);
+	tm4c_gpio_write(od->cp, od->rstpin, 1);
+	tm4c_delay(200);
 
-	oled->pbuf[0] = 0xA0;
-	oled->pbuf[1] = 0x40;
-	tm4c_ssi_rwstart(0, oled->pbuf, oled->tbuf, 2);
+	od->pbuf[0] = 0xA0;
+	od->pbuf[1] = 0x40;
+	tm4c_ssi_rwstart(od->ssi, od->pbuf, od->tbuf, 2);
 
-	oled_picset(oled, 0);
+	oled_fill_display(od, 0);
+	oled_display_onoff(od, 1);
+	tm4c_ledlit(RED, 0);
+}
 
-	oled_display_onoff(oled, 1);
+void oled_init(struct oled_ctrl *od, int ssiport)
+{
+	od->ssi = ssiport;
+	tm4c_ssi_setup(od->ssi);
+	tm4c_gpio_write(od->cp, od->cmdpin, 0);
+	tm4c_gpio_write(od->cp, od->rstpin, 1);
+
+	oled_reset(od);
 }
