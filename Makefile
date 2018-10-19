@@ -4,9 +4,9 @@
 
 .PHONY: all clean clean_all tm4c_lib
 
-all: nswitch
+all: tm4c_lib nswitch
 
-include makedefs
+include tm4c/makedefs
 
 LIBDIR := tm4c
 LIBSRC = $(wildcard tm4c/*.c)
@@ -24,11 +24,11 @@ LDSCRIPT := nswitch.ld
 # The default rule, which causes the driver library to be built.
 #
 
-tm4c/libtm4c.a: $(LIBOBJ)
+tm4c_lib:
 	$(MAKE) -C $(LIBDIR)
 
 nswitch: $(OBJ) tm4c/libtm4c.a
-	$(LD) $(LDFLAGS) $^ -L $(LIBDIR) -ltm4c -o $@
+	$(LD) $(LDFLAGS) $(OBJ) -L $(LIBDIR) -ltm4c -o $@
 #
 # The rule to clean out all the build products.
 #
