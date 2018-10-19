@@ -95,9 +95,20 @@ static inline void memcpy(void *dst, const void *src, int len)
 	uint8_t *pdst = dst;
 	int i;
 
-	for(i = 0; i < len; i++, psrc++, pdst++)
-		*pdst = *psrc;
+	for(i = 0; i < len; i++)
+		*pdst++ = *psrc++;
 }
+
+static inline void memcpy4(void *dst, const void *src, int len)
+{
+	const uint32_t *psrc = src;
+	uint32_t *pdst = dst;
+	int i;
+
+	for(i = 0; i < len/4; i++)
+		*pdst++ = *psrc++;
+}
+
 
 static inline int memcmp(const void *a, const void *b, int len)
 {
