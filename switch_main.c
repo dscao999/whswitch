@@ -34,9 +34,8 @@ static const char *RESET = "ReseT";
 static const char hello[] = "Initialization Completed!\r\n";
 
 static struct oled_ctrl oled = {
+	.width = 96, .height = 64,
 	.cp = GPIOE, .cmdpin = GPIO_PIN_4, .rstpin = GPIO_PIN_5 };
-
-extern char *png_begin[], *png_end[];
 
 void __attribute__((noreturn)) main(void)
 {
@@ -45,7 +44,6 @@ void __attribute__((noreturn)) main(void)
 	static char mesg[80], buf[80];
 	int p_isrs, gpio_isrs, len, usedma;
 	uint32_t tmark;
-	
 
 	tm4c_gpio_setup(GPIOA, 0, 0, 0);
 	tm4c_gpio_setup(GPIOB, GPIO_PIN_5, 0, GPIO_PIN_5);
@@ -65,20 +63,7 @@ void __attribute__((noreturn)) main(void)
 	uart_write(0, hello, strlen(hello));
 	uart_write(1, hello, strlen(hello));
 
-	len = num2str_hex((uint32_t)png_begin, buf);
-	buf[len] = 0x0a;
-	buf[len+1] = 0x0d;
-	uart_write(0, buf, len+2);
-	uart_write(1, buf, len+2);
-	uart_wait_txdma(0);
-	uart_wait_txdma(1);
-	len = num2str_hex((uint32_t)png_end, buf);
-	buf[len] = 0x0a;
-	buf[len+1] = 0x0d;
-	uart_write(0, buf, len+2);
-	uart_write(1, buf, len+2);
-
-	oled_init(&oled, 0);
+	oled_init(&oled, 0, 0);
 	clicked = 0;
 
 	usedma = 1;

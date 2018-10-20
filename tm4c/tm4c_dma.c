@@ -8,7 +8,16 @@ uint32_t udmaerr = 0;
 
 void tm4c_dma_enable(void)
 {
+	int i;
+	struct dmactl *mc;
+
 	ROM_SysCtlPeripheralEnable(SYSCTL_PERIPH_UDMA);
+	for (i = 0, mc = dmacr; i < 64; i++, mc++) {
+		mc->src = 0;
+		mc->dst = 0;
+		mc->ctrl = 0;
+		mc->reserv1 = 0;
+	}
 	while(!ROM_SysCtlPeripheralReady(SYSCTL_PERIPH_UDMA))
 		;
 	ROM_uDMAEnable();

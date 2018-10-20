@@ -46,6 +46,7 @@ static uint32_t tm4c_tick_after(int msec)
 }
 
 void tm4c_setup(void);
+
 static inline void tm4c_delay(int msec)
 {
 	uint32_t mark;
@@ -53,6 +54,12 @@ static inline void tm4c_delay(int msec)
 	mark = tm4c_tick_after(msec);
 	while (time_before(mark))
 		__asm__ __volatile__("wfi");
+}
+
+static inline void tm4c_delay_cycles(int cycle)
+{
+	while (cycle-- > 0)
+		__asm__ __volatile__("nop");
 }
 
 static inline void tm4c_waitint(void)

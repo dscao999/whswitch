@@ -18,6 +18,7 @@ struct png_handle {
 	png_infop info;
 	FILE *pngf;
 	void *map;
+	png_bytepp row;
 	long mlen;
 	unsigned short *oledmap;
 	int width, height, depth, colortyp;
@@ -114,7 +115,7 @@ static inline int align16(int v)
 int pngo_read_image(struct png_handle *ph)
 {
 	int retv, i;
-	png_bytep *rp, *crp, cy;
+	png_bytep *rp, cy;
 
 	retv = 0;
 	ph->rbytes = png_get_rowbytes(ph->png, ph->info);
@@ -131,13 +132,13 @@ int pngo_read_image(struct png_handle *ph)
 			+ sizeof(*rp)*ph->height;
 
 	cy = ph->map;
-	rp = ph->map + align16(ph->height*ph->rbytes);
-	crp = rp;
+	ph->row = ph->map + align16(ph->height*ph->rbytes);
+	rp = ph->row;
 	for (i = 0; i < ph->height; i++) {
-		*crp++ = cy;
+		*rp++ = cy;
 		cy += ph->rbytes;
 	}
-	png_read_image(ph->png, rp);
+	png_read_image(ph->png, ph->row);
 
 exit_10:
 	return retv;
@@ -147,7 +148,8 @@ void pngo_read_end(struct png_handle *ph)
 {
 	png_read_end(ph->png, ph->info);
 	png_destroy_read_struct(&ph->png, &ph->info, NULL);
-	munmap(ph->map, ph->mlen);
+	if (ph->map)
+		munmap(ph->map, ph->mlen);
 	fclose(ph->pngf);
 }
 
@@ -168,20 +170,49 @@ static unsigned short rgb2ssd(const unsigned char *rgb)
 
 static void png2ssd1331(struct png_handle *ph)
 {
-	int i;
+	int i, j;
 	unsigned char *pm;
-	unsigned short *om;
+	unsigned short *om, *em;
 
 	pm = ph->map;
-	om = ph->oledmap;
-	for (i = 0; i < ph->height*ph->width; i++) {
-		*om++ = rgb2ssd(pm);
-		pm += 3;
+	em = ph->oledmap;
+	om = ph->oledmap + (ph->width * ph->height) / 2;
+	for (i = 0; i < ph->height; i+=2) {
+		for (j = 0; j < ph->width; j++) {
+			*em++ = rgb2ssd(pm);
+			pm += 3;
+		}
+		for (j = 0; j < ph->width; j++) {
+			*om++ = rgb2ssd(pm);
+			pm += 3;
+		}
 	}
 }
 
-static struct png_handle ph;
 
+static void png_write(struct png_handle *ph)
+{
+	FILE *of;
+	png_structp png;
+	png_infop info;
+	png_bytepp rowptr;
+
+	of = fopen("./copy_test.png", "wb");
+	png = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+	info = png_create_info_struct(png);
+	png_init_io(png, of);
+
+	png_set_IHDR(png, info, 96, 64, 8, PNG_COLOR_TYPE_RGB, PNG_INTERLACE_NONE,
+			PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
+	rowptr = ph->row;
+	png_set_rows(png, info, rowptr);
+	png_write_png(png, info, PNG_TRANSFORM_IDENTITY, NULL);
+
+	png_destroy_write_struct(&png, &info);
+	fclose(of);
+}
+
+static struct png_handle ph;
 int main(int argc, char *argv[])
 {
 	const char *iname, *oname;
@@ -202,7 +233,9 @@ int main(int argc, char *argv[])
 		goto exit_00;
 	}
 	pngo_transform(&ph);
-	pngo_read_image(&ph);
+	retv = pngo_read_image(&ph);
+	if (retv)
+		goto exit_10;
 
 	ofh = fopen(oname, "wb");
 	if (!ofh) {
@@ -214,6 +247,8 @@ int main(int argc, char *argv[])
 	png2ssd1331(&ph);
 	fwrite(ph.oledmap, 1, 2*ph.width*ph.height, ofh);
 	fclose(ofh);
+
+	png_write(&ph);
 
 exit_10:
 	pngo_read_end(&ph);

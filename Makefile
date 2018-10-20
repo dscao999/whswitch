@@ -23,8 +23,9 @@ LDSCRIPT := nswitch.ld
 #
 # The default rule, which causes the driver library to be built.
 #
+piggy.o: piggy.s tools/tpic_r.ssd tools/tpic_g.ssd tools/tpic_b.ssd tools/dog.ssd
 
-tm4c_lib:
+tm4c_lib tm4c/libtm4c.a:
 	$(MAKE) -C $(LIBDIR)
 
 nswitch: $(OBJ) tm4c/libtm4c.a

@@ -58,7 +58,11 @@ syslib/
 # vim swap file
 .*.swp
 *.ssd
+*.png
+*.jpeg
+*.jpg
 tools/ssdrgb
+tools/png2nkk
 cscope.files
 nswitch
 nswitch.bin
