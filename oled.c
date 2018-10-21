@@ -4,6 +4,18 @@
  */
 #include "miscutils.h"
 #include "oled.h"
+#include "tm4c_uart.h"
+
+struct picinfo {
+	uint8_t len;
+	char *pic;
+};
+static const struct picinfo pics[] = {
+	{ .len = 17, .pic = "Dog, Cane Corso\r\n"},
+	{ .len = 17, .pic = "Dog, Rottweiler\r\n"},
+	{ .len = 6, .pic = "Lion\r\n"},
+	{ .len = 7, .pic = "Tiger\r\n"}
+};
 
 static inline void reset_start_addr(struct oled_ctrl *od)
 {
@@ -40,6 +52,7 @@ void oled_fill_display(struct oled_ctrl *od, int color)
 	rgb[2] = &png_blue;
 	rgb[3] = &png_dog;
 
+	uart_write(1, pics[color%4].pic, pics[color%4].len);
 	len = od->width * 2;
 	pix = rgb[color % 4];
 	opipo = 0;

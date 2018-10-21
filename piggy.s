@@ -7,12 +7,12 @@ png_red:
 .global png_green
 .type png_green, %object
 png_green:
-.incbin "tools/tpic_g.ssd"
+.incbin "tools/dog.ssd"
 .global png_blue
 .type png_blue, %object
 png_blue:
-.incbin "tools/tpic_b.ssd"
+.incbin "tools/lion.ssd"
 .global png_dog
 .type png_dog, %object
 png_dog:
-.incbin "tools/dog.ssd"
+.incbin "tools/tiger.ssd"
